@@ -1,0 +1,8 @@
+__pycache__
+*.pyc
+*.egg*
+build/
+dist/
+junit.xml
+coverage.xml
+.coverage
