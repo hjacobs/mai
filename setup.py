@@ -203,7 +203,7 @@ def setup_package():
         author=AUTHOR,
         author_email=EMAIL,
         license=LICENSE,
-        keywords='aws account vpc',
+        keywords='aws account saml login federated shibboleth',
         long_description=read('README.rst'),
         classifiers=CLASSIFIERS,
         test_suite='tests',
