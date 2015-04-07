@@ -1,4 +1,4 @@
 clickclick==0.4
-aws-saml-login==0.3
+aws-saml-login==0.6
 keyring
 PyYAML
