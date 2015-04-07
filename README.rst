@@ -13,4 +13,5 @@ Usage
 
 .. code-block:: bash
 
-    $ mai
+    $ mai create my-profile
+    $ mai # short for "mai login my-profile"
