@@ -39,7 +39,6 @@ def list_profiles(obj):
     print(yaml.safe_dump(obj))
 
 
-
 @cli.command()
 @click.argument('profile-name')
 @click.option('--url', prompt='Identity provider URL')
