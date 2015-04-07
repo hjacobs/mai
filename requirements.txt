@@ -1,4 +1,4 @@
-clickclick==0.4
+clickclick>=0.5
 aws-saml-login==0.6
 keyring
 PyYAML
