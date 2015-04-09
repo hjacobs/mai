@@ -15,3 +15,7 @@ Usage
 
     $ mai create my-profile
     $ mai # short for "mai login my-profile"
+
+See the `STUPS documentation on Mai`_ for details.
+
+.. _STUPS documentation on Mai: http://stups.readthedocs.org/en/latest/components/mai.html
