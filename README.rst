@@ -2,6 +2,9 @@
 Mai
 ===
 
+.. image:: https://travis-ci.org/zalando-stups/mai.svg?branch=master
+   :target: https://travis-ci.org/zalando-stups/mai
+
 AWS SAML login command line utility.
 
 .. code-block:: bash
