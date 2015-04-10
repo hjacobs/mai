@@ -2,9 +2,10 @@ import click
 import os
 import keyring
 import yaml
+import aws_saml_login.saml
 
 from aws_saml_login import authenticate, assume_role, write_aws_credentials
-from clickclick import Action, choice, error, AliasedGroup
+from clickclick import Action, choice, error, AliasedGroup, info
 
 CONFIG_DIR_PATH = click.get_app_dir('mai')
 CONFIG_FILE_PATH = os.path.join(CONFIG_DIR_PATH, 'mai.yaml')
@@ -39,6 +40,17 @@ def list_profiles(obj):
     print(yaml.safe_dump(obj))
 
 
+def get_role_label(role):
+    """
+    >>> get_role_label(('arn:aws:iam::123:saml-provider/Shibboleth',\
+        'arn:aws:iam::123:role/Shibboleth-PowerUser', 'zalando-stups'))
+    'AWS Account 123 (zalando-stups): Shibboleth-PowerUser'
+    """
+    provider_arn, role_arn, name = role
+    number = role_arn.split(':')[4]
+    return 'AWS Account {} ({}): {}'.format(number, name, role_arn.split('/')[-1])
+
+
 @cli.command()
 @click.argument('profile-name')
 @click.option('--url', prompt='Identity provider URL')
@@ -52,14 +64,10 @@ def create(obj, profile_name, url, user):
     if not user:
         raise click.UsageError('Missing SAML username')
 
-    saml_password = keyring.get_password('mai', user)
-    if not saml_password:
-        saml_password = click.prompt('Please enter your SAML password', hide_input=True)
+    if not url.startswith('http'):
+        url = 'https://{}'.format(url)
 
-    with Action('Authenticating against {url}..', url=url):
-        saml_xml, roles = authenticate(url, user, saml_password)
-
-    keyring.set_password('mai', user, saml_password)
+    saml_xml, roles = saml_login(user, url)
 
     if not roles:
         error('No roles found')
@@ -67,7 +75,7 @@ def create(obj, profile_name, url, user):
     if len(roles) == 1:
         role = roles[0]
     else:
-        role = choice('Please select one role', [(r, str(r)) for r in sorted(roles)])
+        role = choice('Please select one role', [(r, get_role_label(r)) for r in sorted(roles)])
 
     data = {profile_name: {
         'saml_identity_provider_url': url,
@@ -82,6 +90,27 @@ def create(obj, profile_name, url, user):
             yaml.safe_dump(data, fd)
 
 
+def saml_login(user, url):
+    ring_user = '{}@{}'.format(user, url)
+    saml_password = keyring.get_password('mai', ring_user)
+
+    saml_xml = None
+    while not saml_xml:
+        if not saml_password:
+            saml_password = click.prompt('Please enter your SAML password', hide_input=True)
+
+        with Action('Authenticating against {url}..', url=url) as act:
+            try:
+                saml_xml, roles = authenticate(url, user, saml_password)
+            except aws_saml_login.saml.AuthenticationFailed:
+                act.error('Authentication Failed')
+                info('Please check your username/password and try again.')
+                saml_password = None
+
+    keyring.set_password('mai', ring_user, saml_password)
+    return saml_xml, roles
+
+
 def login_with_profile(profile, config):
     url = config.get('saml_identity_provider_url')
     user = config.get('saml_user')
@@ -93,16 +122,9 @@ def login_with_profile(profile, config):
     if not user:
         raise click.UsageError('Missing SAML username')
 
-    saml_password = keyring.get_password('mai', user)
-    if not saml_password:
-        saml_password = click.prompt('Please enter your SAML password', hide_input=True)
+    saml_xml, roles = saml_login(user, url)
 
-    with Action('Authenticating against {url}..', url=url):
-        saml_xml, roles = authenticate(url, user, saml_password)
-
-    keyring.set_password('mai', user, saml_password)
-
-    with Action('Assuming role {role}..', role=role):
+    with Action('Assuming role {role}..', role=get_role_label(role)):
         key_id, secret, session_token = assume_role(saml_xml, role[0], role[1])
 
     with Action('Writing temporary AWS credentials..'):
