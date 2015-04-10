@@ -7,3 +7,4 @@ junit.xml
 coverage.xml
 .coverage
 .idea
+htmlcov/

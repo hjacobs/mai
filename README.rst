@@ -24,4 +24,11 @@ Usage
 
 See the `STUPS documentation on Mai`_ for details.
 
+Running Unit Tests
+==================
+
+.. code-block:: bash
+
+    $ python3 setup.py test --cov-html=true
+
 .. _STUPS documentation on Mai: http://stups.readthedocs.org/en/latest/components/mai.html
