@@ -42,9 +42,9 @@ def list_profiles(obj):
         for name, config in obj.items():
             row = {
                 'name': name,
-                'role': get_role_label(config['saml_role']),
-                'url': config['saml_identity_provider_url'],
-                'user': config['saml_user']}
+                'role': get_role_label(config.get('saml_role')),
+                'url': config.get('saml_identity_provider_url'),
+                'user': config.get('saml_user')}
             rows.append(row)
 
         rows.sort(key=lambda r: r['name'])
@@ -58,6 +58,8 @@ def get_role_label(role):
         'arn:aws:iam::123:role/Shibboleth-PowerUser', 'zalando-stups'))
     'AWS Account 123 (zalando-stups): Shibboleth-PowerUser'
     """
+    if not role:
+        return ''
     provider_arn, role_arn, name = role
     number = role_arn.split(':')[4]
     return 'AWS Account {} ({}): {}'.format(number, name, role_arn.split('/')[-1])
@@ -89,11 +91,9 @@ def create(obj, profile_name, url, user):
     else:
         role = choice('Please select one role', [(r, get_role_label(r)) for r in sorted(roles)])
 
-    path = CONFIG_FILE_PATH
-    try:
-        with open(path, 'rb') as fd:
-            data = yaml.safe_load(fd)
-    except:
+    data = obj
+
+    if not data:
         data = {}
 
     data[profile_name] = {
@@ -101,6 +101,8 @@ def create(obj, profile_name, url, user):
         'saml_role': role,
         'saml_user': user
     }
+
+    path = CONFIG_FILE_PATH
 
     with Action('Storing new profile in {}..'.format(path)):
         os.makedirs(CONFIG_DIR_PATH, exist_ok=True)
