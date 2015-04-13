@@ -5,7 +5,7 @@ import yaml
 import aws_saml_login.saml
 
 from aws_saml_login import authenticate, assume_role, write_aws_credentials
-from clickclick import Action, choice, error, AliasedGroup, info
+from clickclick import Action, choice, error, AliasedGroup, info, print_table
 
 CONFIG_DIR_PATH = click.get_app_dir('mai')
 CONFIG_FILE_PATH = os.path.join(CONFIG_DIR_PATH, 'mai.yaml')
@@ -37,7 +37,17 @@ def cli(ctx, config_file):
 def list_profiles(obj):
     '''List profiles'''
 
-    print(yaml.safe_dump(obj))
+    if obj:
+        rows = []
+        for name, config in obj.items():
+            row = {
+                'name': name,
+                'role': get_role_label(config['saml_role']),
+                'url': config['saml_identity_provider_url'],
+                'user': config['saml_user']}
+            rows.append(row)
+
+        print_table(sorted(rows[0].keys()), rows)
 
 
 def get_role_label(role):
