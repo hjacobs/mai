@@ -47,6 +47,8 @@ def list_profiles(obj):
                 'user': config['saml_user']}
             rows.append(row)
 
+        rows.sort(key=lambda r: r['name'])
+
         print_table(sorted(rows[0].keys()), rows)
 
 
@@ -87,13 +89,19 @@ def create(obj, profile_name, url, user):
     else:
         role = choice('Please select one role', [(r, get_role_label(r)) for r in sorted(roles)])
 
-    data = {profile_name: {
+    path = CONFIG_FILE_PATH
+    try:
+        with open(path, 'rb') as fd:
+            data = yaml.safe_load(fd)
+    except:
+        data = {}
+
+    data[profile_name] = {
         'saml_identity_provider_url': url,
         'saml_role': role,
         'saml_user': user
-    }}
+    }
 
-    path = os.path.expanduser(CONFIG_FILE_PATH)
     with Action('Storing new profile in {}..'.format(path)):
         os.makedirs(CONFIG_DIR_PATH, exist_ok=True)
         with open(path, 'w') as fd:
