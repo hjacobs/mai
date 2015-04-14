@@ -4,9 +4,23 @@ Mai
 
 .. image:: https://travis-ci.org/zalando-stups/mai.svg?branch=master
    :target: https://travis-ci.org/zalando-stups/mai
+   :alt: Build Status
 
 .. image:: https://coveralls.io/repos/zalando-stups/mai/badge.svg
    :target: https://coveralls.io/r/zalando-stups/mai
+   :alt: Code Coverage
+
+.. image:: https://pypip.in/download/stups-mai/badge.svg
+   :target: https://pypi.python.org/pypi/stups-mai/
+   :alt: PyPI Downloads
+
+.. image:: https://pypip.in/version/stups-mai/badge.svg
+   :target: https://pypi.python.org/pypi/stups-mai/
+   :alt: Latest PyPI version
+
+.. image:: https://pypip.in/license/stups-mai/badge.svg
+   :target: https://pypi.python.org/pypi/stups-mai/
+   :alt: License
 
 AWS SAML login command line utility.
 
