@@ -163,7 +163,7 @@ def delete(obj, profile_name):
         raise click.UsageError("Profile does not exist")
     del obj[profile_name]
 
-    with Action('Storing new profile in {}..'.format(path)):
+    with Action('Deleting profile from {}..'.format(path)):
         os.makedirs(CONFIG_DIR_PATH, exist_ok=True)
         with open(path, 'w') as fd:
             yaml.safe_dump(obj, fd)
