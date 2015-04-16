@@ -46,3 +46,10 @@ Running Unit Tests
     $ python3 setup.py test --cov-html=true
 
 .. _STUPS documentation on Mai: http://stups.readthedocs.org/en/latest/components/mai.html
+
+Releasing
+=========
+
+.. code-block:: bash
+
+    $ ./release.sh <NEW-VERSION>
