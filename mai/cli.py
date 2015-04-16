@@ -151,6 +151,24 @@ def login_with_profile(profile, config):
         write_aws_credentials('default', key_id, secret, session_token)
 
 
+@cli.command('delete')
+@click.argument('profile-name')
+@click.pass_obj
+def delete(obj, profile_name):
+    '''Delete profile'''
+
+    path = CONFIG_FILE_PATH
+
+    if not obj or profile_name not in obj:
+        raise click.UsageError("Profile does not exist")
+    del obj[profile_name]
+
+    with Action('Storing new profile in {}..'.format(path)):
+        os.makedirs(CONFIG_DIR_PATH, exist_ok=True)
+        with open(path, 'w') as fd:
+            yaml.safe_dump(obj, fd)
+
+
 @cli.command()
 @click.argument('profile', nargs=-1)
 @click.pass_obj
