@@ -39,7 +39,11 @@ def cli(ctx, config_file):
     if not ctx.invoked_subcommand:
         if not data:
             raise click.UsageError('No profile configured. Use "mai create .." to create a new profile.')
-        profile = sorted(data.keys())[0]
+        profile = None
+        if 'global' in data:
+            profile = data['global'].get('default_profile')
+        if not profile:
+            profile = sorted([k for k in data.keys() if k != 'global'])[0]
         login_with_profile(profile, data.get(profile))
 
 
@@ -116,6 +120,28 @@ def create(obj, profile_name, url, user):
     path = CONFIG_FILE_PATH
 
     with Action('Storing new profile in {}..'.format(path)):
+        os.makedirs(CONFIG_DIR_PATH, exist_ok=True)
+        with open(path, 'w') as fd:
+            yaml.safe_dump(data, fd)
+
+
+@cli.command('set-default')
+@click.argument('profile-name')
+@click.pass_obj
+def set_default(obj, profile_name):
+    '''Set default profile'''
+    data = obj
+
+    if not data or profile_name not in data:
+        raise click.UsageError('Profile "{}" does not exist'.format(profile_name))
+
+    data['global'] = {
+        'default_profile': profile_name
+    }
+
+    path = CONFIG_FILE_PATH
+
+    with Action('Storing configuration in {}..'.format(path)):
         os.makedirs(CONFIG_DIR_PATH, exist_ok=True)
         with open(path, 'w') as fd:
             yaml.safe_dump(data, fd)
