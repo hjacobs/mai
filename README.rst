@@ -10,15 +10,15 @@ Mai
    :target: https://coveralls.io/r/zalando-stups/mai
    :alt: Code Coverage
 
-.. image:: https://pypip.in/download/stups-mai/badge.svg
+.. image:: https://img.shields.io/pypi/dw/stups-mai.svg
    :target: https://pypi.python.org/pypi/stups-mai/
    :alt: PyPI Downloads
 
-.. image:: https://pypip.in/version/stups-mai/badge.svg
+.. image:: https://img.shields.io/pypi/v/stups-mai.svg
    :target: https://pypi.python.org/pypi/stups-mai/
    :alt: Latest PyPI version
 
-.. image:: https://pypip.in/license/stups-mai/badge.svg
+.. image:: https://img.shields.io/pypi/l/stups-mai.svg
    :target: https://pypi.python.org/pypi/stups-mai/
    :alt: License
 
