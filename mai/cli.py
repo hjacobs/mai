@@ -3,6 +3,7 @@ import os
 import keyring
 import yaml
 import aws_saml_login.saml
+import time
 
 import mai
 
@@ -11,6 +12,7 @@ from clickclick import Action, choice, error, AliasedGroup, info, print_table
 
 CONFIG_DIR_PATH = click.get_app_dir('mai')
 CONFIG_FILE_PATH = os.path.join(CONFIG_DIR_PATH, 'mai.yaml')
+LAST_UPDATE_FILE_PATH = os.path.join(CONFIG_DIR_PATH, 'last_update.yaml')
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -186,6 +188,8 @@ def login_with_profile(profile, config):
 
     with Action('Writing temporary AWS credentials..'):
         write_aws_credentials('default', key_id, secret, session_token)
+        with open(LAST_UPDATE_FILE_PATH, 'w') as fd:
+            yaml.safe_dump({'timestamp': time.time(), 'profile': profile}, fd)
 
 
 @cli.command('delete')
@@ -208,15 +212,36 @@ def delete(obj, profile_name):
 
 @cli.command()
 @click.argument('profile', nargs=-1)
+@click.option('-r', '--refresh', is_flag=True, help='Keep running and refresh access tokens automatically')
 @click.pass_obj
-def login(obj, profile):
+def login(obj, profile, refresh):
     '''Login with given profile(s)'''
 
-    for prof in profile:
-        if prof not in obj:
-            raise click.UsageError('Profile "{}" does not exist'.format(prof))
+    repeat = True
+    while repeat:
+        for prof in profile:
+            if prof not in obj:
+                raise click.UsageError('Profile "{}" does not exist'.format(prof))
 
-        login_with_profile(prof, obj[prof])
+            login_with_profile(prof, obj[prof])
+        if refresh:
+            try:
+                with open(LAST_UPDATE_FILE_PATH, 'rb') as fd:
+                    last_update = yaml.safe_load(fd)
+            except:
+                last_update = {'timestamp': 0}
+            wait_time = 3600 * 0.9
+            with Action('Waiting {} minutes before refreshing credentials..'.format(round(wait_time / 60))) as act:
+                while time.time() < last_update['timestamp'] + wait_time:
+                    try:
+                        time.sleep(120)
+                    except KeyboardInterrupt:
+                        # do not show "EXCEPTION OCCURRED" for CTRL+C
+                        repeat = False
+                        break
+                    act.progress()
+        else:
+            repeat = False
 
 
 def main():
