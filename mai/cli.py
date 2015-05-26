@@ -126,6 +126,47 @@ def create(obj, profile_name, url, user):
         with open(path, 'w') as fd:
             yaml.safe_dump(data, fd)
 
+@cli.command('create-all')
+@click.option('--url', prompt='Identity provider URL')
+@click.option('-U', '--user', envvar='SAML_USER', prompt='SAML username')
+@click.pass_obj
+def create(obj, url, user):
+    '''Create for all roles a new own profile'''
+    if not url:
+        raise click.UsageError('Missing identity provider URL')
+
+    if not user:
+        raise click.UsageError('Missing SAML username')
+
+    if not url.startswith('http'):
+        url = 'https://{}'.format(url)
+
+    saml_xml, roles = saml_login(user, url)
+
+    if not roles:
+        error('No roles found')
+
+    data = obj
+
+    if not data:
+        data = {}
+
+    for r in sorted(roles):
+        provider_arn, role_arn, name = r
+        profile_name = '{}-{}'.format(name.split('-')[-1], role_arn.split('-')[-1])
+        data[profile_name] = {
+            'saml_identity_provider_url': url,
+            'saml_role': r,
+            'saml_user': user
+        }
+
+    path = CONFIG_FILE_PATH
+
+    with Action('Storing new profile in {}..'.format(path)):
+        os.makedirs(CONFIG_DIR_PATH, exist_ok=True)
+        with open(path, 'w') as fd:
+            yaml.safe_dump(data, fd)
+
 
 @cli.command('set-default')
 @click.argument('profile-name')
