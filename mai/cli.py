@@ -126,11 +126,12 @@ def create(obj, profile_name, url, user):
         with open(path, 'w') as fd:
             yaml.safe_dump(data, fd)
 
+
 @cli.command('create-all')
 @click.option('--url', prompt='Identity provider URL')
 @click.option('-U', '--user', envvar='SAML_USER', prompt='SAML username')
 @click.pass_obj
-def create(obj, url, user):
+def create_all(obj, url, user):
     '''Create for all roles a new own profile'''
     if not url:
         raise click.UsageError('Missing identity provider URL')
