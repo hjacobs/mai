@@ -154,7 +154,7 @@ def create_all(obj, url, user):
 
     for r in sorted(roles):
         provider_arn, role_arn, name = r
-        profile_name = '{}-{}'.format(name.split('-')[-1], role_arn.split('-')[-1])
+        profile_name = '{}-{}'.format(name.split('-', maxsplit=1)[-1], role_arn.split('-', maxsplit=1)[-1])
         data[profile_name] = {
             'saml_identity_provider_url': url,
             'saml_role': r,
