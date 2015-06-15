@@ -259,6 +259,13 @@ def delete(obj, profile_name):
 def login(obj, profile, refresh):
     '''Login with given profile(s)'''
 
+    try:
+        with open(LAST_UPDATE_FILE_PATH, 'rb') as fd:
+            last_update = yaml.safe_load(fd)
+            if last_update['profile'] and not profile:
+                profile = [last_update['profile']]
+    except:
+        last_update = {'timestamp': 0}
     repeat = True
     while repeat:
         for prof in profile:
@@ -267,11 +274,6 @@ def login(obj, profile, refresh):
 
             login_with_profile(prof, obj[prof])
         if refresh:
-            try:
-                with open(LAST_UPDATE_FILE_PATH, 'rb') as fd:
-                    last_update = yaml.safe_load(fd)
-            except:
-                last_update = {'timestamp': 0}
             wait_time = 3600 * 0.9
             with Action('Waiting {} minutes before refreshing credentials..'.format(round(wait_time / 60))) as act:
                 while time.time() < last_update['timestamp'] + wait_time:
