@@ -417,6 +417,30 @@ def test_login_001(monkeypatch):
         assert 'Writing temporary AWS credentials.. OK' in result.output
         assert 'Waiting 54 minutes before refreshing credentials.. . . . OK' in result.output
 
+        sleep_counter.count = 1
+        result = runner.invoke(cli, ['--config-file', 'mai.yaml', 'login', 'example-Administrator'],
+                               catch_exceptions=False)
+
+        assert 'Authenticating against https://auth.example.com.. OK' in result.output
+        assert 'Assuming role AWS Account 911 (example): Shibboleth-Administrator.. OK' in result.output
+        assert 'Writing temporary AWS credentials.. OK' in result.output
+
+        result = runner.invoke(cli, ['--config-file', 'mai.yaml', 'login'],
+                               catch_exceptions=False)
+
+        assert 'Authenticating against https://auth.example.com.. OK' in result.output
+        assert 'Assuming role AWS Account 911 (example): Shibboleth-Administrator.. OK' in result.output
+        assert 'Writing temporary AWS credentials.. OK' in result.output
+
+        result = runner.invoke(cli, ['--config-file', 'mai.yaml', 'login', '--refresh'],
+                               catch_exceptions=False)
+
+        assert 'Authenticating against https://auth.example.com.. OK' in result.output
+        assert 'Assuming role AWS Account 911 (example): Shibboleth-Administrator.. OK' in result.output
+        assert 'Writing temporary AWS credentials.. OK' in result.output
+        assert 'Waiting 54 minutes before refreshing credentials.. . . . OK' in result.output
+
+
 
 def test_login_002_unknown_profile(monkeypatch):
     data = TEST_CONFIG
