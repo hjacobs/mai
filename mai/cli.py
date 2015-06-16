@@ -264,7 +264,8 @@ def login(obj, profile, refresh):
         if refresh:
             last_update = get_last_update(obj)
             wait_time = 3600 * 0.9
-            with Action('Waiting {} minutes before refreshing credentials..'.format(round(((last_update['timestamp']+wait_time)-time.time()) / 60))) as act:
+            with Action('Waiting {} minutes before refreshing credentials..'
+                        .format(round(((last_update['timestamp']+wait_time)-time.time()) / 60))) as act:
                 while time.time() < last_update['timestamp'] + wait_time:
                     try:
                         time.sleep(120)
