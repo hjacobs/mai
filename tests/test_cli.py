@@ -441,7 +441,6 @@ def test_login_001(monkeypatch):
         assert 'Waiting 54 minutes before refreshing credentials.. . . . OK' in result.output
 
 
-
 def test_login_002_unknown_profile(monkeypatch):
     data = TEST_CONFIG
 
