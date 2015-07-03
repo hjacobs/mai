@@ -28,8 +28,9 @@ def print_version(ctx, param, value):
               default=CONFIG_FILE_PATH, metavar='PATH')
 @click.option('-V', '--version', is_flag=True, callback=print_version, expose_value=False, is_eager=True,
               help='Print the current version number and exit.')
+@click.option('--awsprofile', help='Profilename in ~/.aws/credentials', default='default', show_default=True)
 @click.pass_context
-def cli(ctx, config_file):
+def cli(ctx, config_file, awsprofile):
     path = os.path.abspath(os.path.expanduser(config_file))
     data = {}
     if os.path.exists(path):
@@ -48,7 +49,7 @@ def cli(ctx, config_file):
             profile = data['global'].get('default_profile')
         if not profile:
             profile = sorted([k for k in data.keys() if k != 'global'])[0]
-        login_with_profile(ctx.obj, profile, data.get(profile))
+        login_with_profile(ctx.obj, profile, data.get(profile), awsprofile)
 
 
 @cli.command('list')
@@ -204,7 +205,7 @@ def saml_login(user, url):
     return saml_xml, roles
 
 
-def login_with_profile(obj, profile, config):
+def login_with_profile(obj, profile, config, awsprofile):
     url = config.get('saml_identity_provider_url')
     user = config.get('saml_user')
     role = config.get('saml_role')
@@ -221,7 +222,7 @@ def login_with_profile(obj, profile, config):
         key_id, secret, session_token = assume_role(saml_xml, role[0], role[1])
 
     with Action('Writing temporary AWS credentials..'):
-        write_aws_credentials('default', key_id, secret, session_token)
+        write_aws_credentials(awsprofile, key_id, secret, session_token)
         with open(obj['last-update-filename'], 'w') as fd:
             yaml.safe_dump({'timestamp': time.time(), 'profile': profile}, fd)
 
@@ -247,8 +248,9 @@ def delete(obj, profile_name):
 @cli.command()
 @click.argument('profile', nargs=-1)
 @click.option('-r', '--refresh', is_flag=True, help='Keep running and refresh access tokens automatically')
+@click.option('--awsprofile', help='Profilename in ~/.aws/credentials', default='default', show_default=True)
 @click.pass_obj
-def login(obj, profile, refresh):
+def login(obj, profile, refresh, awsprofile):
     '''Login with given profile(s)'''
 
     repeat = True
@@ -260,7 +262,7 @@ def login(obj, profile, refresh):
             if prof not in obj['config']:
                 raise click.UsageError('Profile "{}" does not exist'.format(prof))
 
-            login_with_profile(obj, prof, obj['config'][prof])
+            login_with_profile(obj, prof, obj['config'][prof], awsprofile)
         if refresh:
             last_update = get_last_update(obj)
             wait_time = 3600 * 0.9
