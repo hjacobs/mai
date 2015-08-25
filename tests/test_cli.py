@@ -24,7 +24,7 @@ SAML_RESPONSE_1_ROLE = ('''<xml xmlns="urn:oasis:names:tc:SAML:2.0:assertion"><A
                            <AttributeValue>arn:aws:iam::911:saml-provider/Shibboleth,arn:aws:iam::911:role/Shibboleth-User</AttributeValue>¬
                            </Attribute>¬
                            </Assertion></xml>''',
-                        [('arn:aws:iam::911:saml-provider/Shibboleth', 'arn:aws:iam::911:role/Shibboleth-User')])
+                        [('arn:aws:iam::911:saml-provider/Shibboleth', 'arn:aws:iam::911:role/Shibboleth-User', None)])
 SAML_RESPONSE_2_ROLES = ('''<xml xmlns="urn:oasis:names:tc:SAML:2.0:assertion"><Assertion>¬
                             <Attribute FriendlyName="Role" Name="https://aws.amazon.com/SAML/Attributes/Role">¬
                             <AttributeValue>arn:aws:iam::911:saml-provider/Shibboleth,arn:aws:iam::911:role/Shibboleth-User</AttributeValue>¬
@@ -290,6 +290,30 @@ def test_create_all_002_no_roles(monkeypatch):
 
     assert 'No roles found' in result.output
     assert result.exit_code == 1
+
+
+def test_create_all_003_one_role(monkeypatch):
+    monkeypatch.setattr('keyring.get_password', MagicMock(return_value=''))
+    monkeypatch.setattr('keyring.set_password', MagicMock(return_value=''))
+    monkeypatch.setattr('mai.cli.authenticate', MagicMock(return_value=SAML_RESPONSE_1_ROLE))
+
+    runner = CliRunner()
+
+    with runner.isolated_filesystem():
+        result = runner.invoke(cli, ['--config-file', 'mai.yaml', 'create-all'],
+                               catch_exceptions=False, input='auth.example.com\nfoo.bar@example.com\n123456\n')
+
+        workingdir = os.getcwd()
+        assert os.path.exists('mai.yaml')
+        with open('mai.yaml') as fd:
+            generated_config = yaml.safe_load(fd)
+    assert generated_config['default-User']['saml_identity_provider_url'] == 'https://auth.example.com'
+    assert generated_config['default-User']['saml_role'][1] == 'arn:aws:iam::911:role/Shibboleth-User'
+    assert generated_config['default-User']['saml_user'] == 'foo.bar@example.com'
+    assert 'Identity provider URL: auth.example.com' in result.output
+    assert 'SAML username: foo.bar@example.com' in result.output
+    assert 'Authenticating against https://auth.example.com.. OK' in result.output
+    assert 'Storing new profile in {}.. OK'.format(os.path.join(workingdir, 'mai.yaml')) in result.output
 
 
 def test_set_default_001(monkeypatch):

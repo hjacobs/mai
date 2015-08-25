@@ -103,6 +103,8 @@ def create(obj, profile_name, url, user):
 
     if len(roles) == 1:
         role = roles[0]
+        if role[2] is None:
+            role = (role[0], role[1], profile_name)
     else:
         role = choice('Please select one role', [(r, get_role_label(r)) for r in sorted(roles)])
 
@@ -144,6 +146,10 @@ def create_all(obj, url, user):
 
     if not data:
         data = {}
+
+    if len(roles) == 1:
+        if roles[0][2] is None:
+            roles = [(roles[0][0], roles[0][1], 'default')]
 
     for r in sorted(roles):
         provider_arn, role_arn, name = r
