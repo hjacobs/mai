@@ -8,7 +8,7 @@ import time
 import mai
 
 from aws_saml_login import authenticate, assume_role, write_aws_credentials
-from clickclick import Action, choice, error, AliasedGroup, info, print_table
+from clickclick import Action, choice, error, AliasedGroup, info, print_table, OutputFormat
 
 CONFIG_DIR_PATH = click.get_app_dir('mai')
 CONFIG_FILE_PATH = os.path.join(CONFIG_DIR_PATH, 'mai.yaml')
@@ -21,6 +21,9 @@ def print_version(ctx, param, value):
         return
     click.echo('Mai {}'.format(mai.__version__))
     ctx.exit()
+
+output_option = click.option('-o', '--output', type=click.Choice(['text', 'json', 'tsv']), default='text',
+                             help='Use alternative output format')
 
 
 @click.group(cls=AliasedGroup, invoke_without_command=True, context_settings=CONTEXT_SETTINGS)
@@ -53,8 +56,9 @@ def cli(ctx, config_file, awsprofile):
 
 
 @cli.command('list')
+@output_option
 @click.pass_obj
-def list_profiles(obj):
+def list_profiles(obj, output):
     '''List profiles'''
 
     if obj['config']:
@@ -69,7 +73,8 @@ def list_profiles(obj):
 
         rows.sort(key=lambda r: r['name'])
 
-        print_table(sorted(rows[0].keys()), rows)
+        with OutputFormat(output):
+            print_table(sorted(rows[0].keys()), rows)
 
 
 def get_role_label(role):
