@@ -1,11 +1,12 @@
 from click.testing import CliRunner
 from unittest.mock import MagicMock
 import yaml
-from mai.cli import cli
+from mai.cli import cli, login_with_profile
 import mai
 import os
 import aws_saml_login.saml
 import time
+import pytest
 
 TEST_CONFIG = {'example-Administrator': {'saml_identity_provider_url': 'https://auth.example.com',
                                          'saml_role': ['arn:aws:iam::911:saml-provider/Shibboleth',
@@ -477,3 +478,27 @@ def test_login_002_unknown_profile(monkeypatch):
 
     assert 'Profile "foobar-User" does not exist' in result.output
     assert result.exit_code == 2
+
+
+def test_assume_role_failed(monkeypatch):
+    m_saml_login = MagicMock()
+    m_saml_login.return_value = 'xml', []
+    monkeypatch.setattr('mai.cli.saml_login', m_saml_login)
+
+    m_assume_role = MagicMock()
+    m_assume_role.side_effect = aws_saml_login.saml.AssumeRoleFailed('Test')
+    monkeypatch.setattr('mai.cli.assume_role', m_assume_role)
+
+    m_fatal_error = MagicMock()
+    m_fatal_error.side_effect = SystemExit(1)
+    monkeypatch.setattr('mai.cli.Action.fatal_error', m_fatal_error)
+
+    config = {'saml_identity_provider_url': 'example.com',
+              'saml_user': 'test_user',
+              'saml_role': ('provider_arn',
+                            'arn:aws:iam::911:saml-provider/Shibboleth',
+                            'name')}
+    with pytest.raises(SystemExit):
+        login_with_profile(None, None, config, None)
+
+    m_fatal_error.assert_called_once_with('Assuming role failed: Test')
