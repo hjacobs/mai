@@ -296,6 +296,20 @@ def login(obj, profile, refresh, awsprofile):
             repeat = False
 
 
+@cli.command()
+@click.argument('profile', nargs=-1)
+@click.option('--awsprofile', help='Profilename in ~/.aws/credentials', default='default', show_default=True)
+@click.pass_context
+def require(context, profile, awsprofile):
+    '''Login if necessary'''
+
+    last_update = get_last_update(context.obj)
+    print(last_update)
+    time_remaining = last_update['timestamp'] + 3600 * 0.9 - time.time()
+    if (time_remaining < 0):
+        context.invoke(login, profile=profile, refresh=False, awsprofile=awsprofile)
+
+
 def get_last_update(obj):
     try:
         with open(obj['last-update-filename'], 'rb') as fd:
