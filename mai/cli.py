@@ -230,8 +230,12 @@ def login_with_profile(obj, profile, config, awsprofile):
 
     saml_xml, roles = saml_login(user, url)
 
-    with Action('Assuming role {role}..', role=get_role_label(role)):
-        key_id, secret, session_token = assume_role(saml_xml, role[0], role[1])
+    with Action('Assuming role {role}..', role=get_role_label(role)) as action:
+        try:
+            key_id, secret, session_token = assume_role(saml_xml,
+                                                        role[0], role[1])
+        except aws_saml_login.saml.AssumeRoleFailed as e:
+            action.fatal_error(str(e))
 
     with Action('Writing temporary AWS credentials..'):
         write_aws_credentials(awsprofile, key_id, secret, session_token)
