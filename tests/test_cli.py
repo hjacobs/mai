@@ -502,3 +502,31 @@ def test_assume_role_failed(monkeypatch):
         login_with_profile(None, None, config, None)
 
     m_fatal_error.assert_called_once_with('Assuming role failed: Test')
+
+def test_require(monkeypatch):
+    monkeypatch.setattr('keyring.get_password', MagicMock(return_value='123456'))
+    monkeypatch.setattr('keyring.set_password', MagicMock(return_value=''))
+    monkeypatch.setattr('mai.cli.authenticate', MagicMock(return_value=SAML_RESPONSE_2_ROLES))
+    monkeypatch.setattr('mai.cli.assume_role', MagicMock(return_value=('KEYID', 'SECRET', 'SESSION_TOKEN')))
+    monkeypatch.setattr('mai.cli.write_aws_credentials', MagicMock)
+    runner = CliRunner()
+    data = TEST_CONFIG
+
+    with runner.isolated_filesystem():
+        with open('mai.yaml', 'w') as fd:
+            yaml.dump(data, fd)
+        result = runner.invoke(cli, ['--config-file', 'mai.yaml', 'require', 'example-User'])
+        assert 'Assuming role' in result.output
+        result = runner.invoke(cli, ['--config-file', 'mai.yaml', 'require', 'example-User'])
+        assert 'Assuming role' not in result.output
+        # mock 1 hour later
+        with open('last_update.yaml', 'r+') as fd:
+            last_updated = yaml.load(fd)
+            last_updated['timestamp'] = last_updated['timestamp'] - 3600
+            fd.seek(0)
+            yaml.dump(last_updated, fd)
+            fd.truncate()
+        result = runner.invoke(cli, ['--config-file', 'mai.yaml', 'require', 'example-User'])
+        assert 'Assuming role' in result.output
+
+
