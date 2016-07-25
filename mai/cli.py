@@ -304,7 +304,6 @@ def require(context, profile, awsprofile):
     '''Login if necessary'''
 
     last_update = get_last_update(context.obj)
-    print(last_update)
     time_remaining = last_update['timestamp'] + 3600 * 0.9 - time.time()
     if (time_remaining < 0):
         context.invoke(login, profile=profile, refresh=False, awsprofile=awsprofile)
