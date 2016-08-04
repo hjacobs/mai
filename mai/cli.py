@@ -305,7 +305,7 @@ def require(context, profile, awsprofile):
 
     last_update = get_last_update(context.obj)
     time_remaining = last_update['timestamp'] + 3600 * 0.9 - time.time()
-    if (time_remaining < 0):
+    if time_remaining < 0 or (profile and profile[0] != last_update['profile']):
         context.invoke(login, profile=profile, refresh=False, awsprofile=awsprofile)
 
 
