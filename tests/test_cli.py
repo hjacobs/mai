@@ -503,6 +503,7 @@ def test_assume_role_failed(monkeypatch):
 
     m_fatal_error.assert_called_once_with('Assuming role failed: Test')
 
+
 def test_require(monkeypatch):
     monkeypatch.setattr('keyring.get_password', MagicMock(return_value='123456'))
     monkeypatch.setattr('keyring.set_password', MagicMock(return_value=''))
@@ -528,5 +529,3 @@ def test_require(monkeypatch):
             fd.truncate()
         result = runner.invoke(cli, ['--config-file', 'mai.yaml', 'require', 'example-User'])
         assert 'Assuming role' in result.output
-
-
