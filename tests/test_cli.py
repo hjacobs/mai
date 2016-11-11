@@ -146,7 +146,7 @@ def test_create_002_one_role(monkeypatch):
     assert generated_config['foobar']['saml_user'] == 'foo.bar@example.com'
     assert 'Identity provider URL: auth.example.com' in result.output
     assert 'SAML username: foo.bar@example.com' in result.output
-    assert 'Authenticating against https://auth.example.com.. OK' in result.output
+    assert 'Authenticating against https://auth.example.com..\n OK' in result.output
     assert 'Storing new profile in {}.. OK'.format(os.path.join(workingdir, 'mai.yaml')) in result.output
 
 
@@ -186,7 +186,7 @@ def test_create_004_two_roles(monkeypatch):
     assert generated_config['foobar']['saml_user'] == 'foo.bar@example.com'
     assert 'Identity provider URL: auth.example.com' in result.output
     assert 'SAML username: foo.bar@example.com' in result.output
-    assert 'Authenticating against https://auth.example.com.. OK' in result.output
+    assert 'Authenticating against https://auth.example.com..\n' in result.output
     assert 'Storing new profile in {}.. OK'.format(os.path.join(workingdir, 'mai.yaml')) in result.output
 
 
@@ -212,7 +212,7 @@ def test_create_005_two_roles_options(monkeypatch):
     assert generated_config['foobar']['saml_identity_provider_url'] == 'https://auth.example.com'
     assert generated_config['foobar']['saml_role'][1] == 'arn:aws:iam::911:role/Shibboleth-Administrator'
     assert generated_config['foobar']['saml_user'] == 'foo.bar@example.com'
-    assert 'Authenticating against https://auth.example.com.. OK' in result.output
+    assert 'Authenticating against https://auth.example.com..\n' in result.output
     assert 'Storing new profile in {}.. OK'.format(os.path.join(workingdir, 'mai.yaml')) in result.output
 
 
@@ -244,9 +244,9 @@ def test_create_006_authentication_failed(monkeypatch):
     assert generated_config['foobar']['saml_user'] == 'foo.bar@example.com'
     assert 'Identity provider URL: auth.example.com' in result.output
     assert 'SAML username: foo.bar@example.com' in result.output
-    assert 'Authenticating against https://auth.example.com.. Authentication Failed' in result.output
+    assert 'Authenticating against https://auth.example.com..\n Authentication Failed' in result.output
     assert 'Please check your username/password and try again.' in result.output
-    assert 'Authenticating against https://auth.example.com.. OK' in result.output
+    assert 'Authenticating against https://auth.example.com..\n OK' in result.output
     assert 'Storing new profile in {}.. OK'.format(os.path.join(workingdir, 'mai.yaml')) in result.output
 
 
@@ -274,7 +274,7 @@ def test_create_all_001(monkeypatch):
     assert generated_config['example-User']['saml_user'] == 'foo.bar@example.com'
     assert 'Identity provider URL: auth.example.com' in result.output
     assert 'SAML username: foo.bar@example.com' in result.output
-    assert 'Authenticating against https://auth.example.com.. OK' in result.output
+    assert 'Authenticating against https://auth.example.com..\n OK' in result.output
     assert 'Storing new profile in {}.. OK'.format(os.path.join(workingdir, 'mai.yaml')) in result.output
 
 
@@ -313,7 +313,7 @@ def test_create_all_003_one_role(monkeypatch):
     assert generated_config['default-User']['saml_user'] == 'foo.bar@example.com'
     assert 'Identity provider URL: auth.example.com' in result.output
     assert 'SAML username: foo.bar@example.com' in result.output
-    assert 'Authenticating against https://auth.example.com.. OK' in result.output
+    assert 'Authenticating against https://auth.example.com..\n OK' in result.output
     assert 'Storing new profile in {}.. OK'.format(os.path.join(workingdir, 'mai.yaml')) in result.output
 
 
@@ -416,28 +416,28 @@ def test_login_001(monkeypatch):
         result = runner.invoke(cli, ['--config-file', 'mai.yaml', 'login', 'example-User'],
                                catch_exceptions=False)
 
-        assert 'Authenticating against https://auth.example.com.. OK' in result.output
+        assert 'Authenticating against https://auth.example.com..\n OK' in result.output
         assert 'Assuming role AWS Account 911 (example): Shibboleth-User.. OK' in result.output
         assert 'Writing temporary AWS credentials.. OK' in result.output
 
         result = runner.invoke(cli, ['--config-file', 'mai.yaml', 'login', 'example-User'],
                                catch_exceptions=False)
 
-        assert 'Authenticating against https://auth.example.com.. OK' in result.output
+        assert 'Authenticating against https://auth.example.com..\n OK' in result.output
         assert 'Assuming role AWS Account 911 (example): Shibboleth-User.. OK' in result.output
         assert 'Writing temporary AWS credentials.. OK' in result.output
 
         result = runner.invoke(cli, ['--config-file', 'mai.yaml', 'login'],
                                catch_exceptions=False)
 
-        assert 'Authenticating against https://auth.example.com.. OK' in result.output
+        assert 'Authenticating against https://auth.example.com..\n OK' in result.output
         assert 'Assuming role AWS Account 911 (example): Shibboleth-User.. OK' in result.output
         assert 'Writing temporary AWS credentials.. OK' in result.output
 
         result = runner.invoke(cli, ['--config-file', 'mai.yaml', 'login', '--refresh'],
                                catch_exceptions=False)
 
-        assert 'Authenticating against https://auth.example.com.. OK' in result.output
+        assert 'Authenticating against https://auth.example.com..\n OK' in result.output
         assert 'Assuming role AWS Account 911 (example): Shibboleth-User.. OK' in result.output
         assert 'Writing temporary AWS credentials.. OK' in result.output
         assert 'Waiting 54 minutes before refreshing credentials.. . . . OK' in result.output
@@ -446,21 +446,21 @@ def test_login_001(monkeypatch):
         result = runner.invoke(cli, ['--config-file', 'mai.yaml', 'login', 'example-Administrator'],
                                catch_exceptions=False)
 
-        assert 'Authenticating against https://auth.example.com.. OK' in result.output
+        assert 'Authenticating against https://auth.example.com..\n OK' in result.output
         assert 'Assuming role AWS Account 911 (example): Shibboleth-Administrator.. OK' in result.output
         assert 'Writing temporary AWS credentials.. OK' in result.output
 
         result = runner.invoke(cli, ['--config-file', 'mai.yaml', 'login'],
                                catch_exceptions=False)
 
-        assert 'Authenticating against https://auth.example.com.. OK' in result.output
+        assert 'Authenticating against https://auth.example.com..\n OK' in result.output
         assert 'Assuming role AWS Account 911 (example): Shibboleth-Administrator.. OK' in result.output
         assert 'Writing temporary AWS credentials.. OK' in result.output
 
         result = runner.invoke(cli, ['--config-file', 'mai.yaml', 'login', '--refresh'],
                                catch_exceptions=False)
 
-        assert 'Authenticating against https://auth.example.com.. OK' in result.output
+        assert 'Authenticating against https://auth.example.com..\n OK' in result.output
         assert 'Assuming role AWS Account 911 (example): Shibboleth-Administrator.. OK' in result.output
         assert 'Writing temporary AWS credentials.. OK' in result.output
         assert 'Waiting 54 minutes before refreshing credentials.. . . . OK' in result.output
