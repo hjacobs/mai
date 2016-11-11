@@ -186,7 +186,7 @@ def test_create_004_two_roles(monkeypatch):
     assert generated_config['foobar']['saml_user'] == 'foo.bar@example.com'
     assert 'Identity provider URL: auth.example.com' in result.output
     assert 'SAML username: foo.bar@example.com' in result.output
-    assert 'Authenticating against https://auth.example.com..\n' in result.output
+    assert 'Authenticating against https://auth.example.com..\n OK' in result.output
     assert 'Storing new profile in {}.. OK'.format(os.path.join(workingdir, 'mai.yaml')) in result.output
 
 
@@ -212,7 +212,7 @@ def test_create_005_two_roles_options(monkeypatch):
     assert generated_config['foobar']['saml_identity_provider_url'] == 'https://auth.example.com'
     assert generated_config['foobar']['saml_role'][1] == 'arn:aws:iam::911:role/Shibboleth-Administrator'
     assert generated_config['foobar']['saml_user'] == 'foo.bar@example.com'
-    assert 'Authenticating against https://auth.example.com..\n' in result.output
+    assert 'Authenticating against https://auth.example.com..\n OK' in result.output
     assert 'Storing new profile in {}.. OK'.format(os.path.join(workingdir, 'mai.yaml')) in result.output
 
 
