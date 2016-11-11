@@ -96,7 +96,7 @@ class PyTest(TestCommand):
 
 def get_install_requirements(path):
     content = open(os.path.join(__location__, path)).read()
-    return [req for req in content.split('\\n') if req != '']
+    return [req for req in content.split('\n') if req != '']
 
 
 def read(fname):

@@ -205,7 +205,7 @@ def saml_login(user, url):
         if not saml_password:
             saml_password = click.prompt('Please enter your SAML password', hide_input=True)
 
-        with Action('Authenticating against {url}..', url=url) as act:
+        with Action('Authenticating against {url}..\n', url=url) as act:
             try:
                 saml_xml, roles = authenticate(url, user, saml_password)
             except aws_saml_login.saml.AuthenticationFailed:
