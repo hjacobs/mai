@@ -22,6 +22,7 @@ def print_version(ctx, param, value):
     click.echo('Mai {}'.format(mai.__version__))
     ctx.exit()
 
+
 output_option = click.option('-o', '--output', type=click.Choice(['text', 'json', 'tsv']), default='text',
                              help='Use alternative output format')
 
