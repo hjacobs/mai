@@ -62,6 +62,9 @@ def cli(ctx, config_file, awsprofile):
 def list_profiles(obj, output):
     '''List profiles'''
 
+    if 'global' in obj['config']:
+        print("Yay!")
+
     if obj['config']:
         rows = []
         for name, config in obj['config'].items():
@@ -317,6 +320,10 @@ def get_last_update(obj):
     except:
         last_update = {'timestamp': 0}
     return last_update
+
+
+def write_credentials_service(obj):
+   url = click.prompt("Enter credential service URL:") 
 
 
 def main():
