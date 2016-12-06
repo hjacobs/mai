@@ -5,6 +5,8 @@ import yaml
 import aws_saml_login.saml
 import requests
 import time
+import stups_cli.config
+import zign.api
 
 import mai
 
@@ -43,14 +45,17 @@ def cli(ctx, config_file, awsprofile):
         with open(path, 'rb') as fd:
             data = yaml.safe_load(fd)
 
+    zign_config = stups_cli.config.load_config('zign')
+
     ctx.obj = {'config': data,
                'config-file': path,
                'config-dir': os.path.dirname(path),
-               'last-update-filename': os.path.join(os.path.dirname(path), 'last_update.yaml')}
+               'last-update-filename': os.path.join(os.path.dirname(path), 'last_update.yaml'),
+               'user': zign_config['user']}
 
     if 'global' not in data or 'service_url' not in data['global']:
         write_service_url(data, path)
-    
+
     if not ctx.invoked_subcommand:
         if not data:
             raise click.UsageError('No profile configured. Use "mai create .." to create a new profile.')
@@ -63,6 +68,7 @@ def cli(ctx, config_file, awsprofile):
 
 
 def write_service_url(data, path):
+    '''Prompts for the Credential Service URL and writes in local configuration'''
 
     # Keep trying until successful connection
     while True:
@@ -87,30 +93,37 @@ def write_service_url(data, path):
         with open(path, 'w') as fd:
             yaml.safe_dump(data, fd)
 
+
 @cli.command('list')
 @output_option
 @click.pass_obj
 def list_profiles(obj, output):
     '''List profiles'''
 
-#   cred_svc = get_credentials_service(obj['config'])
-#    print("Credential Service:", cred_svc)
-#    return
+    # TODO Must be changed to the Credential Service URL 
+    service_url = 'https://teams.auth.zalando.com/api/accounts/aws?member={}&role=any'.format(obj['user'])
 
-    if obj['config']:
-        rows = []
-        for name, config in obj['config'].items():
-            row = {
-                'name': name,
-                'role': get_role_label(config.get('saml_role')),
-                'url': config.get('saml_identity_provider_url'),
-                'user': config.get('saml_user')}
-            rows.append(row)
+    token = get_zign_token(obj['user'])
+    r = requests.get(service_url, headers={'Authorization': 'Bearer {}'.format(token.get('access_token'))})
 
-        rows.sort(key=lambda r: r['name'])
+    rows = []
+    for item in r.json():
+        row = {
+            'name': item['name'],
+            'id': item['id'],
+            'role': item['role'],
+        }
+        rows.append(row)
+    rows.sort(key=lambda r: r['name'])
+    with OutputFormat(output):
+        print_table(sorted(rows[0].keys()), rows)
 
-        with OutputFormat(output):
-            print_table(sorted(rows[0].keys()), rows)
+
+def get_zign_token(user):
+    try:
+        return zign.api.get_named_token(['uid'], 'employees', 'mai', user, None, prompt=True)
+    except zign.api.ServerError as e:
+        raise click.ClickException('Unable to get token from zign')
 
 
 def get_role_label(role):
