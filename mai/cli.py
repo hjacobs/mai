@@ -49,7 +49,7 @@ def cli(ctx, config_file, awsprofile):
                'last-update-filename': os.path.join(os.path.dirname(path), 'last_update.yaml')}
 
     if 'global' not in data or 'service_url' not in data['global']:
-        write_service_url(data, path, os.path.dirname(path))
+        write_service_url(data, path)
     
     if not ctx.invoked_subcommand:
         if not data:
@@ -62,13 +62,13 @@ def cli(ctx, config_file, awsprofile):
         login_with_profile(ctx.obj, profile, data.get(profile), awsprofile)
 
 
-def write_service_url(data, path, config_dir):
+def write_service_url(data, path):
 
     # Keep trying until successful connection
     while True:
         service_url = click.prompt('Enter credentials service URL')
         if not service_url.startswith('http'):
-            service_url = 'https://{}'.format(credentials_url)
+            service_url = 'https://{}'.format(service_url)
         try:
             r = requests.get(service_url + '/swagger.json')
             if r.status_code == 200:
@@ -83,7 +83,7 @@ def write_service_url(data, path, config_dir):
     data['global']['service_url'] = service_url
 
     with Action('Storing new credentials service URL in {}..'.format(path)):
-        os.makedirs(config_dir, exist_ok=True)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, 'w') as fd:
             yaml.safe_dump(data, fd)
 
