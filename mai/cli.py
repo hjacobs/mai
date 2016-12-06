@@ -3,12 +3,14 @@ import os
 import keyring
 import yaml
 import aws_saml_login.saml
+import requests
 import time
 
 import mai
 
 from aws_saml_login import authenticate, assume_role, write_aws_credentials
 from clickclick import Action, choice, error, AliasedGroup, info, print_table, OutputFormat
+from requests.exceptions import RequestException
 
 CONFIG_DIR_PATH = click.get_app_dir('mai')
 CONFIG_FILE_PATH = os.path.join(CONFIG_DIR_PATH, 'mai.yaml')
@@ -40,11 +42,15 @@ def cli(ctx, config_file, awsprofile):
     if os.path.exists(path):
         with open(path, 'rb') as fd:
             data = yaml.safe_load(fd)
+
     ctx.obj = {'config': data,
                'config-file': path,
                'config-dir': os.path.dirname(path),
                'last-update-filename': os.path.join(os.path.dirname(path), 'last_update.yaml')}
 
+    if 'global' not in data or 'service_url' not in data['global']:
+        write_service_url(data, path, os.path.dirname(path))
+    
     if not ctx.invoked_subcommand:
         if not data:
             raise click.UsageError('No profile configured. Use "mai create .." to create a new profile.')
@@ -56,14 +62,40 @@ def cli(ctx, config_file, awsprofile):
         login_with_profile(ctx.obj, profile, data.get(profile), awsprofile)
 
 
+def write_service_url(data, path, config_dir):
+
+    # Keep trying until successful connection
+    while True:
+        service_url = click.prompt('Enter credentials service URL')
+        if not service_url.startswith('http'):
+            service_url = 'https://{}'.format(credentials_url)
+        try:
+            r = requests.get(service_url + '/swagger.json')
+            if r.status_code == 200:
+               break
+            else:
+               click.secho('ERROR: no response from credentials service', fg='red', bold=True)
+        except RequestException as e:
+            click.secho('ERROR: connection error or timed out', fg='red', bold=True)
+
+    if 'global' not in data:
+        data['global'] = dict()
+    data['global']['service_url'] = service_url
+
+    with Action('Storing new credentials service URL in {}..'.format(path)):
+        os.makedirs(config_dir, exist_ok=True)
+        with open(path, 'w') as fd:
+            yaml.safe_dump(data, fd)
+
 @cli.command('list')
 @output_option
 @click.pass_obj
 def list_profiles(obj, output):
     '''List profiles'''
 
-    if 'global' in obj['config']:
-        print("Yay!")
+#   cred_svc = get_credentials_service(obj['config'])
+#    print("Credential Service:", cred_svc)
+#    return
 
     if obj['config']:
         rows = []
@@ -322,8 +354,12 @@ def get_last_update(obj):
     return last_update
 
 
-def write_credentials_service(obj):
-   url = click.prompt("Enter credential service URL:") 
+def get_credentials_service(config):
+    if "credentials_service_url" in config:
+        return config["credentials_service_url"]
+    else:
+        url = click.prompt("Enter credentials service URL")
+        return url 
 
 
 def main():
