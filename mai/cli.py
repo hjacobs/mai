@@ -100,14 +100,10 @@ def write_service_url(data, path):
 def list_profiles(obj, output):
     '''List profiles'''
 
-    # TODO Must be changed to the Credential Service URL 
-    service_url = 'https://teams.auth.zalando.com/api/accounts/aws?member={}&role=any'.format(obj['user'])
-
-    token = get_zign_token(obj['user'])
-    r = requests.get(service_url, headers={'Authorization': 'Bearer {}'.format(token.get('access_token'))})
+    role_list = get_profiles(obj['user'])
 
     rows = []
-    for item in r.json():
+    for item in role_list:
         row = {
             'name': item['name'],
             'id': item['id'],
@@ -117,6 +113,18 @@ def list_profiles(obj, output):
     rows.sort(key=lambda r: r['name'])
     with OutputFormat(output):
         print_table(sorted(rows[0].keys()), rows)
+
+
+def get_profiles(user):
+    '''Returns the AWS profiles for the specified user'''
+
+    # TODO MUST be changed to the Credential Service URL 
+    service_url = 'https://teams.auth.zalando.com/api/accounts/aws?member={}&role=any'.format(user)
+
+    token = get_zign_token(user)
+    r = requests.get(service_url, headers={'Authorization': 'Bearer {}'.format(token.get('access_token'))})
+
+    return r.json()
 
 
 def get_zign_token(user):
@@ -139,90 +147,6 @@ def get_role_label(role):
     return 'AWS Account {} ({}): {}'.format(number, name, role_arn.split('/')[-1])
 
 
-@cli.command()
-@click.argument('profile-name')
-@click.option('--url', prompt='Identity provider URL')
-@click.option('-U', '--user', envvar='SAML_USER', prompt='SAML username')
-@click.pass_obj
-def create(obj, profile_name, url, user):
-    '''Create a new profile'''
-    if not url.startswith('http'):
-        url = 'https://{}'.format(url)
-
-    saml_xml, roles = saml_login(user, url)
-
-    if not roles:
-        error('No roles found')
-        exit(1)
-
-    if len(roles) == 1:
-        role = roles[0]
-        if role[2] is None:
-            role = (role[0], role[1], profile_name)
-    else:
-        role = choice('Please select one role', [(r, get_role_label(r)) for r in sorted(roles)])
-
-    data = obj['config']
-
-    if not data:
-        data = {}
-
-    data[profile_name] = {
-        'saml_identity_provider_url': url,
-        'saml_role': role,
-        'saml_user': user
-    }
-
-    path = obj['config-file']
-
-    with Action('Storing new profile in {}..'.format(path)):
-        os.makedirs(obj['config-dir'], exist_ok=True)
-        with open(path, 'w') as fd:
-            yaml.safe_dump(data, fd)
-
-
-@cli.command('create-all')
-@click.option('--url', prompt='Identity provider URL')
-@click.option('-U', '--user', envvar='SAML_USER', prompt='SAML username')
-@click.pass_obj
-def create_all(obj, url, user):
-    '''Create for all roles a new own profile'''
-    if not url.startswith('http'):
-        url = 'https://{}'.format(url)
-
-    saml_xml, roles = saml_login(user, url)
-
-    if not roles:
-        error('No roles found')
-        exit(1)
-
-    data = obj['config']
-
-    if not data:
-        data = {}
-
-    if len(roles) == 1:
-        if roles[0][2] is None:
-            roles = [(roles[0][0], roles[0][1], 'default')]
-
-    for r in sorted(roles):
-        provider_arn, role_arn, name = r
-        name = name or 'unknown'  # name is sometimes missing
-        profile_name = '{}-{}'.format(name.split('-', maxsplit=1)[-1], role_arn.split('-', maxsplit=1)[-1])
-        data[profile_name] = {
-            'saml_identity_provider_url': url,
-            'saml_role': r,
-            'saml_user': user
-        }
-
-    path = obj['config-file']
-
-    with Action('Storing new profile in {}..'.format(path)):
-        os.makedirs(obj['config-dir'], exist_ok=True)
-        with open(path, 'w') as fd:
-            yaml.safe_dump(data, fd)
-
-
 @cli.command('set-default')
 @click.argument('profile-name')
 @click.pass_obj
@@ -243,27 +167,6 @@ def set_default(obj, profile_name):
         os.makedirs(obj['config-dir'], exist_ok=True)
         with open(path, 'w') as fd:
             yaml.safe_dump(data, fd)
-
-
-def saml_login(user, url):
-    ring_user = '{}@{}'.format(user, url)
-    saml_password = keyring.get_password('mai', ring_user)
-
-    saml_xml = None
-    while not saml_xml:
-        if not saml_password:
-            saml_password = click.prompt('Please enter your SAML password', hide_input=True)
-
-        with Action('Authenticating against {url}..\n', url=url) as act:
-            try:
-                saml_xml, roles = authenticate(url, user, saml_password)
-            except aws_saml_login.saml.AuthenticationFailed:
-                act.error('Authentication Failed')
-                info('Please check your username/password and try again.')
-                saml_password = None
-
-    keyring.set_password('mai', ring_user, saml_password)
-    return saml_xml, roles
 
 
 def login_with_profile(obj, profile, config, awsprofile):
@@ -292,31 +195,14 @@ def login_with_profile(obj, profile, config, awsprofile):
             yaml.safe_dump({'timestamp': time.time(), 'profile': profile}, fd)
 
 
-@cli.command('delete')
-@click.argument('profile-name')
-@click.pass_obj
-def delete(obj, profile_name):
-    '''Delete profile'''
-
-    path = obj['config-file']
-
-    if not obj['config'] or profile_name not in obj['config']:
-        raise click.UsageError('Profile "{}" does not exist'.format(profile_name))
-    del obj['config'][profile_name]
-
-    with Action('Deleting profile from {}..'.format(path)):
-        os.makedirs(obj['config-dir'], exist_ok=True)
-        with open(path, 'w') as fd:
-            yaml.safe_dump(obj['config'], fd)
-
-
 @cli.command()
-@click.argument('profile', nargs=-1)
+@click.argument('account')
+@click.argument('role')
 @click.option('-r', '--refresh', is_flag=True, help='Keep running and refresh access tokens automatically')
 @click.option('--awsprofile', help='Profilename in ~/.aws/credentials', default='default', show_default=True)
 @click.pass_obj
 def login(obj, profile, refresh, awsprofile):
-    '''Login with given profile(s)'''
+    '''Login to AWS with given ACCOUNT and ROLE'''
 
     repeat = True
     while repeat:
@@ -365,14 +251,6 @@ def get_last_update(obj):
     except:
         last_update = {'timestamp': 0}
     return last_update
-
-
-def get_credentials_service(config):
-    if "credentials_service_url" in config:
-        return config["credentials_service_url"]
-    else:
-        url = click.prompt("Enter credentials service URL")
-        return url 
 
 
 def main():
