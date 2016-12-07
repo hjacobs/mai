@@ -1,4 +1,5 @@
 import click
+import json
 import os
 import keyring
 import yaml
@@ -6,6 +7,7 @@ import aws_saml_login.saml
 import requests
 import time
 import stups_cli.config
+import urllib.parse
 import zign.api
 
 import mai
@@ -18,6 +20,8 @@ CONFIG_DIR_PATH = click.get_app_dir('mai')
 CONFIG_FILE_PATH = os.path.join(CONFIG_DIR_PATH, 'mai.yaml')
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+
+CREDENTIALS_RESOURCE = '/aws-accounts/{}/roles/{}/credentials'
 
 
 def print_version(ctx, param, value):
@@ -53,18 +57,18 @@ def cli(ctx, config_file, awsprofile):
                'last-update-filename': os.path.join(os.path.dirname(path), 'last_update.yaml'),
                'user': zign_config['user']}
 
-    if 'global' not in data or 'service_url' not in data['global']:
+    if 'service_url' not in data:
         write_service_url(data, path)
 
     if not ctx.invoked_subcommand:
-        if not data:
-            raise click.UsageError('No profile configured. Use "mai create .." to create a new profile.')
-        profile = None
-        if 'global' in data:
-            profile = data['global'].get('default_profile')
-        if not profile:
-            profile = sorted([k for k in data.keys() if k != 'global'])[0]
-        login_with_profile(ctx.obj, profile, data.get(profile), awsprofile)
+        account, role = None, None
+        if 'default_account' in data:
+            account = data['default_account']
+            role = data['default_role']
+
+        if not account:
+            raise click.UsageError('No default profile configured. Use "mai set-default..." to set a default profile.')
+        ctx.invoke(login, account=account, role=role)
 
 
 def write_service_url(data, path):
@@ -84,9 +88,7 @@ def write_service_url(data, path):
         except RequestException as e:
             click.secho('ERROR: connection error or timed out', fg='red', bold=True)
 
-    if 'global' not in data:
-        data['global'] = dict()
-    data['global']['service_url'] = service_url
+    data['service_url'] = service_url
 
     with Action('Storing new credentials service URL in {}..'.format(path)):
         os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -101,18 +103,9 @@ def list_profiles(obj, output):
     '''List profiles'''
 
     role_list = get_profiles(obj['user'])
-
-    rows = []
-    for item in role_list:
-        row = {
-            'name': item['name'],
-            'id': item['id'],
-            'role': item['role'],
-        }
-        rows.append(row)
-    rows.sort(key=lambda r: r['name'])
+    role_list.sort(key=lambda r: r['name'])
     with OutputFormat(output):
-        print_table(sorted(rows[0].keys()), rows)
+        print_table(sorted(role_list[0].keys()), role_list)
 
 
 def get_profiles(user):
@@ -124,7 +117,7 @@ def get_profiles(user):
     token = get_zign_token(user)
     r = requests.get(service_url, headers={'Authorization': 'Bearer {}'.format(token.get('access_token'))})
 
-    return r.json()
+    return [ { 'name': item['name'], 'role': item['role'], 'id': item['id'] } for item in r.json() ]
 
 
 def get_zign_token(user):
@@ -148,51 +141,45 @@ def get_role_label(role):
 
 
 @cli.command('set-default')
-@click.argument('profile-name')
+@click.argument('account')
+@click.argument('role')
 @click.pass_obj
-def set_default(obj, profile_name):
-    '''Set default profile'''
-    data = obj['config']
+def set_default(obj, account, role):
+    '''Set default AWS account and role'''
 
-    if not data or profile_name not in data:
-        raise click.UsageError('Profile "{}" does not exist'.format(profile_name))
+    role_list = get_profiles(obj['user'])
 
-    data['global'] = {
-        'default_profile': profile_name
-    }
+    if (account, role) not in [ (item['name'], item['role']) for item in role_list ]:
+        raise click.UsageError('Profile "{} {}" does not exist'.format(account, role))
 
-    path = obj['config-file']
-
-    with Action('Storing configuration in {}..'.format(path)):
+    obj['config']['default_account'] = account
+    obj['config']['default_role'] = role
+        
+    with Action('Storing configuration in {}..'.format(obj['config-file'])):
         os.makedirs(obj['config-dir'], exist_ok=True)
-        with open(path, 'w') as fd:
-            yaml.safe_dump(data, fd)
+        with open(obj['config-file'], 'w') as fd:
+            yaml.safe_dump(obj['config'], fd)
 
 
-def login_with_profile(obj, profile, config, awsprofile):
-    url = config.get('saml_identity_provider_url')
-    user = config.get('saml_user')
-    role = config.get('saml_role')
+def get_aws_credentials(user, account, role, service_url):
+    '''Requests AWS Temporary Credentials from the provided Credential Service URL'''
 
-    if not url:
-        raise click.UsageError('Missing identity provider URL')
+    profiles = get_profiles(user)
 
-    if not user:
-        raise click.UsageError('Missing SAML username')
+    id = None
+    for item in profiles:
+        if item['name'] == account and item['role'] == role:
+            id = item['id']
 
-    saml_xml, roles = saml_login(user, url)
+    if not id:
+        raise click.UsageError('Profile "{} {}" does not exist'.format(account, role))
 
-    with Action('Assuming role {role}..', role=get_role_label(role)) as action:
-        try:
-            key_id, secret, session_token = assume_role(saml_xml,
-                                                        role[0], role[1])
-        except aws_saml_login.saml.AssumeRoleFailed as e:
-            action.fatal_error(str(e))
+    credentials_url = service_url + CREDENTIALS_RESOURCE.format(id, role)
 
-    with Action('Writing temporary AWS credentials..'):
-        write_aws_credentials(awsprofile, key_id, secret, session_token)
-        with open(obj['last-update-filename'], 'w') as fd:
-            yaml.safe_dump({'timestamp': time.time(), 'profile': profile}, fd)
+    token = get_zign_token(user)
+    r = requests.get(credentials_url, headers={'Authorization': 'Bearer {}'.format(token.get('access_token'))})
+
+    return r.json()
 
 
 @cli.command()
@@ -201,19 +188,21 @@ def login_with_profile(obj, profile, config, awsprofile):
 @click.option('-r', '--refresh', is_flag=True, help='Keep running and refresh access tokens automatically')
 @click.option('--awsprofile', help='Profilename in ~/.aws/credentials', default='default', show_default=True)
 @click.pass_obj
-def login(obj, profile, refresh, awsprofile):
-    '''Login to AWS with given ACCOUNT and ROLE'''
+def login(obj, account, role, refresh, awsprofile):
+    '''Login to AWS with given account and role'''
 
     repeat = True
     while repeat:
         last_update = get_last_update(obj)
-        if 'profile' in last_update and last_update['profile'] and not profile:
-            profile = [last_update['profile']]
-        for prof in profile:
-            if prof not in obj['config']:
-                raise click.UsageError('Profile "{}" does not exist'.format(prof))
+        if 'account' in last_update and last_update['account'] and (not account or not role):
+            account, role = last_update['account'], last_update['role']
 
-            login_with_profile(obj, prof, obj['config'][prof], awsprofile)
+        creds = get_aws_credentials(obj['user'], account, role, obj['config']['service_url'])
+        with Action('Writing temporary AWS credentials for {} {}..'.format(account, role)):
+            write_aws_credentials(awsprofile, creds['access_key_id'], creds['secret_access_key'], creds['session_token'])
+            with open(obj['last-update-filename'], 'w') as fd:
+                yaml.safe_dump({'timestamp': time.time(), 'account': account, 'role': role}, fd)
+
         if refresh:
             last_update = get_last_update(obj)
             wait_time = 3600 * 0.9
