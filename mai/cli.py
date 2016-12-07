@@ -1,21 +1,19 @@
 import click
+import configparser
 import json
 import os
-import keyring
-import yaml
-import aws_saml_login.saml
 import requests
-import time
 import stups_cli.config
-import urllib.parse
+import time
+import yaml
 import zign.api
 
 import mai
 
-from aws_saml_login import authenticate, assume_role, write_aws_credentials
 from clickclick import Action, choice, error, AliasedGroup, info, print_table, OutputFormat
 from requests.exceptions import RequestException
 
+AWS_CREDENTIALS_PATH = '~/.aws/credentials'
 CONFIG_DIR_PATH = click.get_app_dir('mai')
 CONFIG_FILE_PATH = os.path.join(CONFIG_DIR_PATH, 'mai.yaml')
 
@@ -127,19 +125,6 @@ def get_zign_token(user):
         raise click.ClickException('Unable to get token from zign')
 
 
-def get_role_label(role):
-    """
-    >>> get_role_label(('arn:aws:iam::123:saml-provider/Shibboleth',\
-        'arn:aws:iam::123:role/Shibboleth-PowerUser', 'zalando-stups'))
-    'AWS Account 123 (zalando-stups): Shibboleth-PowerUser'
-    """
-    if not role:
-        return ''
-    provider_arn, role_arn, name = role
-    number = role_arn.split(':')[4]
-    return 'AWS Account {} ({}): {}'.format(number, name, role_arn.split('/')[-1])
-
-
 @cli.command('set-default')
 @click.argument('account')
 @click.argument('role')
@@ -240,6 +225,25 @@ def get_last_update(obj):
     except:
         last_update = {'timestamp': 0}
     return last_update
+
+
+def write_aws_credentials(profile, key_id, secret, session_token=None):
+    credentials_path = os.path.expanduser(AWS_CREDENTIALS_PATH)
+    os.makedirs(os.path.dirname(credentials_path), exist_ok=True)
+    config = configparser.ConfigParser()
+    if os.path.exists(credentials_path):
+        config.read(credentials_path)
+
+    config[profile] = {}
+    config[profile]['aws_access_key_id'] = key_id
+    config[profile]['aws_secret_access_key'] = secret
+    if session_token:
+        # apparently the different AWS SDKs either use "session_token" or "security_token", so set both
+        config[profile]['aws_session_token'] = session_token
+        config[profile]['aws_security_token'] = session_token
+
+    with open(credentials_path, 'w') as fd:
+        config.write(fd)
 
 
 def main():
