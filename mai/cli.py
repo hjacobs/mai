@@ -12,6 +12,7 @@ import mai
 
 from clickclick import Action, choice, error, AliasedGroup, info, print_table, OutputFormat
 from requests.exceptions import RequestException
+from zign.api import AuthenticationFailed
 
 AWS_CREDENTIALS_PATH = '~/.aws/credentials'
 CONFIG_DIR_PATH = click.get_app_dir('mai')
@@ -118,11 +119,17 @@ def get_profiles(user):
     return [ { 'name': item['name'], 'role': item['role'], 'id': item['id'] } for item in r.json() ]
 
 
-def get_zign_token(user):
-    try:
-        return zign.api.get_named_token(['uid'], 'employees', 'mai', user, None, prompt=True)
-    except zign.api.ServerError as e:
-        raise click.ClickException('Unable to get token from zign')
+def get_zign_token(user, jwt=False):
+    if jwt:
+        try:
+            return zign.api.get_token_browser_redirect('mai')
+        except zign.api.AuthenticationFailed as e:
+            raise click.ClickException('Unable to get token from zign')
+    else:
+        try:
+            return zign.api.get_named_token(['uid'], 'employees', 'mai', user, None, prompt=True)
+        except zign.api.ServerError as e:
+            raise click.ClickException('Unable to get token from zign')
 
 
 @cli.command('set-default')
@@ -161,7 +168,7 @@ def get_aws_credentials(user, account, role, service_url):
 
     credentials_url = service_url + CREDENTIALS_RESOURCE.format(id, role)
 
-    token = get_zign_token(user)
+    token = get_zign_token(user, jwt=True)
     r = requests.get(credentials_url, headers={'Authorization': 'Bearer {}'.format(token.get('access_token'))})
 
     return r.json()
