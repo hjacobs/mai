@@ -122,7 +122,7 @@ def get_profiles(user):
 def get_zign_token(user, jwt=False):
     if jwt:
         try:
-            return zign.api.get_token_browser_redirect('mai')
+            return zign.api.get_token_browser_redirect('maijwt')
         except zign.api.AuthenticationFailed as e:
             raise click.ClickException('Unable to get token from zign')
     else:
