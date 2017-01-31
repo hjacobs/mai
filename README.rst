@@ -22,6 +22,10 @@ Mai
    :target: https://pypi.python.org/pypi/stups-mai/
    :alt: License
 
+
+[At Zalando, this repository has been deprecated. Please update the STUPS tools and use zaws.]
+=====
+
 AWS SAML login command line utility.
 
 .. code-block:: bash
